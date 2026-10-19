@@ -1,0 +1,15 @@
+{
+  "name": "NodeAPP Video İndirici",
+  "short_name": "NodeAPP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5f2",
+  "theme_color": "#7cb603",
+  "icons": [
+    {
+      "src": "https://logodix.com/logo/1764907.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}
