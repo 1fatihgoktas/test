@@ -1,15 +1,25 @@
 {
   "name": "NodeAPP Video İndirici",
   "short_name": "NodeAPP",
+  "description": "YouTube, Instagram, TikTok ve Twitter'dan hızlı ve ücretsiz video indirin.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f5f2",
+  "background_color": "#000000",
   "theme_color": "#7cb603",
+  "orientation": "any",
   "icons": [
     {
-      "src": "https://logodix.com/logo/1764907.png",
-      "sizes": "128x128",
-      "type": "image/png"
+      "src": "/192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
