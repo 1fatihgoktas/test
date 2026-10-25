@@ -803,16 +803,14 @@ function temaToggle() {
 }
 
 (function() {
-  const k = localStorage.getItem('tema');
-  if (k) {
-    document.documentElement.dataset.tema = k;
-    document.addEventListener('DOMContentLoaded', () => {
-      const temaBtn = document.getElementById('temaDugmesi');
-      if (temaBtn) {
-        temaBtn.innerHTML = `<img src="${k === 'karanlik' ? KARANLIK_LOGO : AYDINLIK_LOGO}" alt="Tema İkonu">`;
-      }
-    });
-  }
+  const k = localStorage.getItem('tema') || 'karanlik'; // varsayılan karanlık
+  document.documentElement.dataset.tema = k;
+  document.addEventListener('DOMContentLoaded', () => {
+    const temaBtn = document.getElementById('temaDugmesi');
+    if (temaBtn) {
+      temaBtn.innerHTML = `<img src="${k === 'karanlik' ? KARANLIK_LOGO : AYDINLIK_LOGO}" alt="Tema İkonu">`;
+    }
+  });
 })();
 
 function mesajGoster(tip, metin) {
