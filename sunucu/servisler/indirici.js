@@ -302,40 +302,90 @@ function ffmpegKomutBul() {
   return fs.existsSync(yerel) ? yerel : 'ffmpeg';
 }
 
+function saniyeToZaman(saniye) {
+  const s = Math.max(0, Math.floor(Number(saniye) || 0));
+  const saat = Math.floor(s / 3600);
+  const dakika = Math.floor((s % 3600) / 60);
+  const sn = s % 60;
+  return `${String(saat).padStart(2, '0')}:${String(dakika).padStart(2, '0')}:${String(sn).padStart(2, '0')}`;
+}
+
 function kirp(url, baslangic, bitis, kalite, cb, baslik) {
   const sure = bitis - baslangic;
   if (!Number.isFinite(baslangic) || !Number.isFinite(bitis) || baslangic < 0 || sure <= 0 || sure > 1800) {
     return cb(new Error('Gecersiz kirpma araligi'));
   }
 
-  indir(url, 'mp4', kalite, (hata, kaynak) => {
-    if (hata) return cb(hata);
+  const bilgi = platformTespit(url);
+  const youtubeMu = bilgi && (bilgi.platform === 'youtube' || bilgi.platform === 'youtube_shorts');
 
-    const id = uuid();
-    const hedef = path.join(GECICI_KLASOR, id + '.mp4');
-    const args = [
-      '-y',
-      '-ss', String(baslangic),
-      '-i', kaynak.dosyaYolu,
-      '-t', String(sure),
-      '-map', '0:v:0',
-      '-map', '0:a?',
-      '-c:v', 'libx264',
-      '-preset', 'veryfast',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-b:a', '192k',
-      '-movflags', '+faststart',
-      hedef
-    ];
+  // Eski yöntem: tüm videoyu indir → ffmpeg ile kes
+  function eskiYontemleKirp() {
+    indir(url, 'mp4', kalite, (hata, kaynak) => {
+      if (hata) return cb(hata);
 
-    execFile(ffmpegKomutBul(), args, { timeout: 600000, maxBuffer: 10 * 1024 * 1024 }, (ffmpegHatasi, stdout, stderr) => {
-      try { fs.unlinkSync(kaynak.dosyaYolu); } catch {}
-      if (ffmpegHatasi) return cb(new Error((stderr || stdout || 'Kirpma basarisiz').trim().slice(0, 500)));
-      if (!fs.existsSync(hedef)) return cb(new Error('Kirpilmis dosya olusturulamadi'));
-      cb(null, { id, dosyaYolu: hedef, format: 'mp4', dosyaAdi: dosyaAdiHazirla(baslik) });
-    });
-  }, baslik);
+      const id = uuid();
+      const hedef = path.join(GECICI_KLASOR, id + '.mp4');
+      const args = [
+        '-y',
+        '-ss', String(baslangic),
+        '-i', kaynak.dosyaYolu,
+        '-t', String(sure),
+        '-map', '0:v:0',
+        '-map', '0:a?',
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-movflags', '+faststart',
+        hedef
+      ];
+
+      execFile(ffmpegKomutBul(), args, { timeout: 600000, maxBuffer: 10 * 1024 * 1024 }, (ffmpegHatasi, stdout, stderr) => {
+        try { fs.unlinkSync(kaynak.dosyaYolu); } catch {}
+        if (ffmpegHatasi) return cb(new Error((stderr || stdout || 'Kirpma basarisiz').trim().slice(0, 500)));
+        if (!fs.existsSync(hedef)) return cb(new Error('Kirpilmis dosya olusturulamadi'));
+        cb(null, { id, dosyaYolu: hedef, format: 'mp4', dosyaAdi: dosyaAdiHazirla(baslik) });
+      });
+    }, baslik);
+  }
+
+  // YouTube değilse eski yöntem
+  if (!youtubeMu) {
+    return eskiYontemleKirp();
+  }
+
+  // YouTube: önce --download-sections dene (daha verimli)
+  const id = uuid();
+  const hedef = path.join(GECICI_KLASOR, id + '.mp4');
+  const komut = ytdlpKomutBul();
+  const baslangicStr = saniyeToZaman(baslangic);
+  const bitisStr = saniyeToZaman(bitis);
+  const yukseklik = (kalite || ayarlar.tumunuAl().varsayilanKalite || '720p').replace('p', '');
+
+  let args = [
+    '--no-warnings',
+    '--download-sections', `*${baslangicStr}-${bitisStr}`,
+    '-f', `best[protocol*=m3u8][ext=mp4][height<=${yukseklik}][vcodec^=avc1]/best[protocol*=m3u8][ext=mp4][height<=${yukseklik}]/bestvideo[ext=mp4][height<=${yukseklik}][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4][height<=${yukseklik}][vcodec^=avc1]/bestvideo[ext=mp4][height<=${yukseklik}]+bestaudio[ext=m4a]/best[ext=mp4]/best`,
+    '--merge-output-format', 'mp4',
+    '-o', hedef,
+    '--no-playlist',
+    url
+  ];
+
+  args = [...ytDlpJavascriptArgumanlari(), ...args];
+
+  const ffmpegKlasoru = ffmpegKlasoruBul();
+  if (ffmpegKlasoru) args = ['--ffmpeg-location', ffmpegKlasoru, ...args];
+
+  execFile(komut, args, { timeout: 600000, maxBuffer: 20 * 1024 * 1024 }, (hata, stdout, stderr) => {
+    // Başarısız olursa eski yönteme düş
+    if (hata || !fs.existsSync(hedef)) {
+      return eskiYontemleKirp();
+    }
+    cb(null, { id, dosyaYolu: hedef, format: 'mp4', dosyaAdi: dosyaAdiHazirla(baslik) });
+  });
 }
 
 module.exports = { medyaBilgisiAl, youtubeAra, indir, kirp, aktifIndirmeler, aktifIndirmeEkle, aktifIndirmeGuncelle, aktifIndirmeKaldir };
