@@ -50,7 +50,11 @@ uygulama.use(helmet({
 uygulama.use(cookieParser());
 uygulama.use(express.json({ limit: '10kb' }));
 uygulama.use(express.urlencoded({ extended: false, limit: '10kb' }));
-uygulama.use(express.static(path.join(__dirname, '..', 'genel')));
+
+// DÜZELTME BURADA YAPILDI: 
+// 'genel' klasörü yerine doğrudan ana kök dizin (..) dışarıya açıldı. 
+// Böylece manifest.json, sw.js ve 512x512.png / 192x192.png dosyalarına tarayıcıdan erişilebilecek.
+uygulama.use(express.static(path.join(__dirname, '..')));
 
 uygulama.use(session({
   secret: process.env.OTURUM_SIRRI || crypto.randomBytes(32).toString('hex'),
@@ -60,8 +64,6 @@ uygulama.use(session({
     httpOnly: true,
     maxAge: 8 * 60 * 60 * 1000,
     sameSite: 'strict',
-    // Local development uses HTTP even when NODE_ENV=production. Enable this
-    // only when the deployed site is actually served over HTTPS.
     secure: process.env.SESSION_SECURE === 'true'
   }
 }));
@@ -69,8 +71,6 @@ uygulama.use(session({
 const genelLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
-  // Admin dashboard widgets poll several endpoints periodically. They are
-  // already protected by the admin session and have their own login limit.
   skip: req => Boolean(req.session?.adminGiris)
 });
 const indirmeLimit = rateLimit({
@@ -86,8 +86,6 @@ const topluIndirmeLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 2 });
 const adminLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  // Keep login attempts rate-limited, but do not throttle an authenticated
-  // admin's health/statistics polling requests.
   skip: req => Boolean(req.session?.adminGiris)
 });
 
@@ -129,15 +127,13 @@ uygulama.use((req, res, next) => {
   const sunucu = uygulama.listen(PORT, () => {
     console.log('');
     console.log('  ================================================');
-    console.log('   OZGURAPP VIDEO INDIRICI - Calisiyor');
-    console.log('   Adres : http://localhost:' + PORT);
-    console.log('   Admin : http://localhost:' + PORT + '/admin/giris');
+    console.log('    OZGURAPP VIDEO INDIRICI - Calisiyor');
+    console.log('    Adres : http://localhost:' + PORT);
+    console.log('    Admin : http://localhost:' + PORT + '/admin/giris');
     console.log('  ================================================');
     console.log('');
   });
 
-  // Playlist indirmeleri birden fazla video nedeniyle uzun sürebilir.
-  // Node'un varsayılan 5 dakikalık HTTP isteği zaman aşımı bağlantıyı kapatmasın.
   sunucu.requestTimeout = 0;
   sunucu.timeout = 0;
 
