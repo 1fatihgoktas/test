@@ -426,6 +426,76 @@ footer .footer-marka span { color: var(--vurgu); }
   .ozellik-ozet-madde:nth-child(2) { border-right: 0; }
   .ozellik-ozet-madde:nth-child(-n + 2) { border-bottom: 1px solid var(--sinir); }
 }
+.pwa-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg2);
+  color: var(--yazi);
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 99999;
+  border: 1px solid var(--sinir);
+  animation: asagi 0.3s ease both;
+}
+.pwa-banner-icerik {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pwa-banner-ikon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+.pwa-banner-yazi h4 {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.pwa-banner-yazi p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--yazi2);
+}
+.pwa-banner-butonlar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.pwa-banner-butonlar button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--sinir);
+  font-family: inherit;
+}
+.pwa-btn-ikincil {
+  background: var(--kart);
+  color: var(--yazi2);
+}
+.pwa-btn-ikincil:hover {
+  color: var(--yazi);
+  border-color: var(--vurgu);
+}
+.pwa-btn-birincil {
+  background: var(--vurgu);
+  color: #fff;
+  border-color: var(--vurgu);
+}
+.pwa-btn-birincil:hover {
+  opacity: 0.9;
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
@@ -613,6 +683,20 @@ footer .footer-marka span { color: var(--vurgu); }
     </div>
   </section>
 </main>
+<!-- Özel PWA Yükleme Banner'ı -->
+<div id="pwa-install-banner" class="pwa-banner" style="display: none;" aria-hidden="true">
+  <div class="pwa-banner-icerik">
+    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968322.png" alt="NodeAPP Icon" class="pwa-banner-ikon" />
+    <div class="pwa-banner-yazi">
+      <h4>NodeAPP'i Yükleyin</h4>
+      <p>Daha hızlı erişim ve tam ekran deneyim için ana ekrana ekleyin!</p>
+    </div>
+  </div>
+  <div class="pwa-banner-butonlar">
+    <button id="pwa-close-btn" class="pwa-btn-ikincil" type="button">Daha Sonra</button>
+    <button id="pwa-install-btn" class="pwa-btn-birincil" type="button">Yükle</button>
+  </div>
+</div>
 
 <!-- Tam Ekran SSS Modalları -->
 <div class="sss-modal" id="modalKayit">
@@ -715,6 +799,43 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// --- PWA Yükleme Banner Yönetimi ---
+let pwaDeferredPrompt = null;
+const pwaBanner = document.getElementById('pwa-install-banner');
+const pwaInstallBtn = document.getElementById('pwa-install-btn');
+const pwaCloseBtn = document.getElementById('pwa-close-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pwaDeferredPrompt = e;
+
+  if (pwaBanner && !localStorage.getItem('pwa-prompt-closed')) {
+    pwaBanner.style.display = 'flex';
+    pwaBanner.setAttribute('aria-hidden', 'false');
+  }
+});
+
+pwaInstallBtn?.addEventListener('click', async () => {
+  if (!pwaDeferredPrompt) return;
+  pwaDeferredPrompt.prompt();
+  const { outcome } = await pwaDeferredPrompt.userChoice;
+  pwaDeferredPrompt = null;
+  pwaBanner.style.display = 'none';
+});
+
+pwaCloseBtn?.addEventListener('click', () => {
+  if (pwaBanner) {
+    pwaBanner.style.display = 'none';
+    pwaBanner.setAttribute('aria-hidden', 'true');
+    localStorage.setItem('pwa-prompt-closed', 'true');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  if (pwaBanner) {
+    pwaBanner.style.display = 'none';
+  }
+});
 function sssModalAc(tip) {
   if (tip === 'kayit') document.getElementById('modalKayit').classList.add('aktif');
   if (tip === 'platform') document.getElementById('modalPlatform').classList.add('aktif');
